@@ -1,0 +1,42 @@
+site_name: AWS Directory Services Workshop
+nav:
+  - Setting up the environment: module-1.md
+  - Establish Trust between Managed ADs: module-2.md
+  - Share domain between AWS accounts : module-3.md
+  - MFA: module-4.md
+  - AWS Console Access: module-5.md
+  - References: module-6.md
+  
+theme:
+  name: 'material'
+  palette:
+    primary: 'indigo'
+    accent: 'indigo'
+  font:
+     text: 'Roboto'
+     code: 'Consolas'
+  feature:
+    tabs: true
+# Customizations
+markdown_extensions:
+  - admonition
+  - codehilite   
+  - attr_list
+  - pymdownx.arithmatex
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:pymdownx.emoji.to_svg
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - toc:
+      permalink: true

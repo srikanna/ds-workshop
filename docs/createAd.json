@@ -1,0 +1,13 @@
+{
+    "Name": "example.com", 
+    "ShortName": "example", 
+    "Password": "Aws@dmin20171", 
+    "Description": "Sandbox Directory", 
+    "VpcSettings": {
+        "VpcId": "vpc-1b0d1e79", 
+        "SubnetIds": [
+            "subnet-0e3f2b6c","subnet-d58cc693"
+        ]
+    }, 
+    "Edition": "Standard"
+}

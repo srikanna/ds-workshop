@@ -1,0 +1,25 @@
+{
+    "ImageId": "ami-6bd2bd0a", 
+    "InstanceType": "t2.large", 
+    "Monitoring": {
+        "Enabled": true
+    }, 
+    "SecurityGroupIds": [
+        "sg-fb0d1099"
+    ],
+    "SubnetId": "subnet-oe3f2b6c", 
+    "IamInstanceProfile": {
+        "Name": "TestEC2Role"
+    }, 
+    "TagSpecifications": [
+        {
+            "ResourceType": "instance", 
+            "Tags": [
+                {
+                    "Key": "Name", 
+                    "Value": "TestDomainMember"
+                }
+            ]
+        }
+    ]
+}

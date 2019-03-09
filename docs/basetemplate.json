@@ -1,0 +1,997 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This template is used a part of the NET315 builder session,it creates multiple VPCs. **WARNING** This template creates EC2 instances and related resources. You will be billed for the AWS resources used if you create a stack from this template.",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups":    [
+                {
+                    "Label": {
+                        "default": "User Input Required "
+                    },
+                    "Parameters": [
+                        "KeyName",
+                        "TestInstance"
+                    ]
+                }
+
+            ]
+        }
+    },
+    "Parameters": {
+        "TestInstance": {
+            "Type": "String",
+            "AllowedValues": ["Linux","Windows"]
+        },
+        "SharedServicesEnvironment": {
+            "Type": "String",
+            "Default": "Shared Services VPC",
+            "Description": "Shared Services VPC"
+        },
+        "SharedServicesVpcCidr": {
+            "Type": "String",
+            "Default": "10.0.0.0/16",
+            "Description": "IP range (CIDR notation) for Shared Services VPC"
+        },
+        "SharedServicesPublicSubnet1Value": {
+            "Type": "String",
+            "Default": "10.0.1.0/24",
+            "Description": "Public Subnet 1 - IP range (CIDR notation) for Shared Service VPC"
+        },
+        "SharedServicesPrivateSubnet1Value": {
+            "Type": "String",
+            "Default": "10.0.3.0/24",
+            "Description": "Private Subnet 1 - IP range (CIDR notation) for Shared Service VPC"
+        },
+        "SharedServicesPrivateSubnet2Value": {
+            "Type": "String",
+            "Default": "10.0.4.0/24",
+            "Description": "Private Subnet 2 - IP range (CIDR notation) for Shared Service VPC"
+        },
+        "ProviderPublicSubnet2Value": {
+            "Type": "String",
+            "Default": "10.0.2.0/24",
+            "Description": "Public Subnet 2 -IP range (CIDR notation) for Shared Service VPC"
+        },
+        "KeyName": {
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "Description": "Amazon EC2 Key Pair"
+        },
+        "Consumer2Environment": {
+            "Type": "String",
+            "Default": "Service Consumer2",
+            "Description": "Service Consumer2"
+        },
+        "Consumer1Environment": {
+            "Type": "String",
+            "Default": "Service Consumer1",
+            "Description": "Service Consumer1"
+        },
+        "Consumer2VpcCidr": {
+            "Type": "String",
+            "Default": "10.20.0.0/16",
+            "Description": "IP range (CIDR notation) for this Service Consumer2 VPC"
+        },
+        "Consumer1VpcCidr": {
+            "Type": "String",
+            "Default": "10.10.0.0/16",
+            "Description": "IP range (CIDR notation) for this Service Consumer1 VPC"
+        },
+        "Consumer2PublicSubnet1Value": {
+            "Type": "String",
+            "Default": "10.20.1.0/24",
+            "Description": "Public Subnet - IP range (CIDR notation) for Service Consumer2 VPC"
+        },
+        "Consumer1PublicSubnet1Value": {
+            "Type": "String",
+            "Default": "10.10.1.0/24",
+            "Description": "Public Subnet - IP range (CIDR notation) for Service Consumer1 VPC"
+        }
+    },
+    "Mappings": {
+        "RegionMap": {
+            "us-east-1": {"Linux": "ami-b70554c8", "Windows": "ami-05f5c28bb6992ab4b"},
+            "us-east-2": {"Linux": "ami-8c122be9", "Windows": "ami-01d1dfbacf429abed"},
+            "us-west-1": {"Linux": "ami-e0ba5c83", "Windows": "ami-02d273719aba0b0a8"},
+            "us-west-2": {"Linux": "ami-a9d09ed1", "Windows": "ami-05b83598992924b63"},
+            "ap-northeast-1": {"Linux": "ami-e99f4896"},
+            "ap-northeast-2": {"Linux": "ami-afd86dc1"},
+            "ap-northeast-3": {"Linux": "ami-32b8b64f"},
+            "ap-south-1": {"Linux": "ami-d783a9b8"},
+            "ap-southeast-1": {"Linux": "ami-05868579"},
+            "ap-southeast-2": {"Linux": "ami-39f8215b"},
+            "ca-central-1": {"Linux": "ami-0ee86a6a"},
+            "eu-central-1": {"Linux": "ami-7c4f7097"},
+            "eu-west-1": {"Linux": "ami-466768ac"},
+            "eu-west-2": {"Linux": "ami-b8b45ddf"},
+            "eu-west-3": {"Linux": "ami-2cf54551"},
+            "sa-east-1": {"Linux": "ami-6dca9001"}
+        }
+    },
+    "Conditions": {
+        "LinuxTestInstance": {"Fn::Equals": [ { "Ref": "TestInstance" }, "Linux" ]},
+        "WindowsTestInstance": {"Fn::Equals": [ { "Ref": "TestInstance" }, "Windows" ]}
+    },
+    "Resources": {
+        "ProviderVPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "SharedServicesVpcCidr"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Ref": "SharedServicesEnvironment"
+                        }
+                    }
+                ]
+            }
+        },
+        "InternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "ServiceProviderIGW"
+                    }
+                ]
+            }
+        },
+        "InternetGatewayAttachment": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "ProviderVPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            }
+        },
+        "ProviderPublicSubnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "ProviderVPC"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Ref": "SharedServicesPublicSubnet1Value"
+                },
+                "MapPublicIpOnLaunch": "True",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Provider Public Subnet1"
+                    }
+                ]
+            }
+        },
+        "ProviderPrivateSubnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "ProviderVPC"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Ref": "SharedServicesPrivateSubnet1Value"
+                },
+                "MapPublicIpOnLaunch": "True",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Provider Private Subnet1"
+                    }
+                ]
+            }
+        },
+        "ProviderPrivateSubnet2": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "ProviderVPC"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "1",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Ref": "SharedServicesPrivateSubnet2Value"
+                },
+                "MapPublicIpOnLaunch": "True",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Provider Private Subnet2"
+                    }
+                ]
+            }
+        },
+        "ProviderPublicSubnet2": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "ProviderVPC"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "1",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Ref": "ProviderPublicSubnet2Value"
+                },
+                "MapPublicIpOnLaunch": "True",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Provider Public Subnet2"
+                    }
+                ]
+            }
+        },
+        "ProviderVPCDefaultSecurityGroupIngress": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Properties": {
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "ProviderVPC",
+                        "DefaultSecurityGroup"
+                    ]
+                },
+                "IpProtocol": "tcp",
+                "FromPort": "22",
+                "ToPort": "22",
+                "CidrIp": "0.0.0.0/0",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Shared Services VPC Default Security Group"
+                    }
+                ]
+            }
+        },
+        "SquidProxySG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupName": "SquidProxySG",
+                "GroupDescription": "Accepts traffic on incoming port 3218 from Consumer2 VPCs- 10.20.0.0/16",
+                "VpcId": {
+                    "Ref": "ProviderVPC"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3128",
+                        "ToPort": "3128",
+                        "CidrIp": "10.20.0.0/16",
+                        "Description": "Accept Only Squid proxy traffic from Service Consumer2 VPC - 10.20.0.0/16"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3128",
+                        "ToPort": "3128",
+                        "CidrIp": "10.0.0.0/16",
+                        "Description": "Rule is required for Network Load Balancer health check to pass."
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": "0.0.0.0/0",
+                        "Description": "For ssh access"
+                    }                    
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "SquidProxySG"
+                    }
+                ]
+            }
+        },
+        "NATGatewayEIP1" : {
+            "Type" : "AWS::EC2::EIP",
+            "Properties" : {
+                "Domain" : "vpc"
+            }
+        },
+        "NATGatewayEIP2" : {
+            "Type" : "AWS::EC2::EIP",
+            "Properties" : {
+                "Domain" : "vpc"
+            }
+        },        
+        "NATGateway1" : {
+            "Type" : "AWS::EC2::NatGateway",
+            "DependsOn" : "InternetGatewayAttachment",
+            "Properties" : {
+                "AllocationId" : {
+                    "Fn::GetAtt" : [
+                        "NATGatewayEIP1",
+                        "AllocationId"
+                    ]
+                },
+                "SubnetId" : {
+                    "Ref" : "ProviderPublicSubnet1"
+                }
+            }
+        },
+        "NATGateway2" : {
+            "Type" : "AWS::EC2::NatGateway",
+            "DependsOn" : "InternetGatewayAttachment",
+            "Properties" : {
+                "AllocationId" : {
+                    "Fn::GetAtt" : [
+                        "NATGatewayEIP2",
+                        "AllocationId"
+                    ]
+                },
+                "SubnetId" : {
+                    "Ref" : "ProviderPublicSubnet2"
+                }
+            }
+        },
+        "ProviderVPCPublicRouteTable1": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "ProviderVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Provider VPC Public Route table"
+                    }
+                ]
+            }
+        },
+        "ProviderVPCDefaultPublicRoute": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": "InternetGatewayAttachment",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ProviderVPCPublicRouteTable1"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            }
+        },
+        "PublicSubnetRouteTableAssociation1": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ProviderVPCPublicRouteTable1"
+                },
+                "SubnetId": {
+                    "Ref": "ProviderPublicSubnet1"
+                }
+            }
+        },
+        "PublicSubnetRouteTableAssociation2": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ProviderVPCPublicRouteTable1"
+                },
+                "SubnetId": {
+                    "Ref": "ProviderPublicSubnet2"
+                }
+            }
+        },
+        "ProviderVPCPrivateRouteTable1": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {"Ref": "ProviderVPC"},
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Provider VPC Private Route table"
+                    }
+                ]
+            }
+        },
+        "ProviderVPCDefaultPrivateRoute1": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": "InternetGatewayAttachment",
+            "Properties": {
+                "RouteTableId": { "Ref": "ProviderVPCPrivateRouteTable1" },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId" : { "Ref" : "NATGateway1" }
+            }
+        },
+        "PrivateSubnetRouteTableAssociation1": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ProviderVPCPrivateRouteTable1"
+                },
+                "SubnetId": {
+                    "Ref": "ProviderPrivateSubnet1"
+                }
+            }
+        },
+        "ProviderVPCPrivateRouteTable2": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {"Ref": "ProviderVPC"},
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Provider VPC Private Route table"
+                    }
+                ]
+            }
+        },
+        "ProviderVPCDefaultPrivateRoute2": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": "InternetGatewayAttachment",
+            "Properties": {
+                "RouteTableId": { "Ref": "ProviderVPCPrivateRouteTable2" },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId" : { "Ref" : "NATGateway2" }
+            }
+        },
+        "PrivateSubnetRouteTableAssociation2": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ProviderVPCPrivateRouteTable2"
+                },
+                "SubnetId": {
+                    "Ref": "ProviderPrivateSubnet2"
+                }
+            }
+        },
+        "1PeeringRouteProviderToConsumer1" : {
+            "Type" : "AWS::EC2::Route",
+            "Properties" : {
+                "DestinationCidrBlock": {"Fn::GetAtt" : ["Consumer1VPC","CidrBlock"]},
+                "RouteTableId" : { "Ref" : "ProviderVPCPrivateRouteTable1" },
+                "VpcPeeringConnectionId" : { "Ref" : "VPCPeeringConnection1" }
+            }
+        }, 
+        "2PeeringRouteProviderToConsumer1" : {
+            "Type" : "AWS::EC2::Route",
+            "Properties" : {
+                "DestinationCidrBlock": {"Fn::GetAtt" : ["Consumer1VPC","CidrBlock"]},
+                "RouteTableId" : { "Ref" : "ProviderVPCPrivateRouteTable2" },
+                "VpcPeeringConnectionId" : { "Ref" : "VPCPeeringConnection1" }
+            }
+        },                
+        "1PeeringRouteProviderToConsumer2" : {
+            "Type" : "AWS::EC2::Route",
+            "Properties" : {
+                "DestinationCidrBlock": {"Fn::GetAtt" : ["Consumer2VPC","CidrBlock"]},
+                "RouteTableId" : { "Ref" : "ProviderVPCPrivateRouteTable1" },
+                "VpcPeeringConnectionId" : { "Ref" : "VPCPeeringConnection1" }
+            }
+        }, 
+        "2PeeringRouteProviderToConsumer2" : {
+            "Type" : "AWS::EC2::Route",
+            "Properties" : {
+                "DestinationCidrBlock": {"Fn::GetAtt" : ["Consumer2VPC","CidrBlock"]},
+                "RouteTableId" : { "Ref" : "ProviderVPCPrivateRouteTable2" },
+                "VpcPeeringConnectionId" : { "Ref" : "VPCPeeringConnection1" }
+            }
+        },
+      "AdJoinIAMRole": {
+         "Type": "AWS::IAM::Role",
+         "Properties": {
+            "AssumeRolePolicyDocument": {
+               "Version" : "2012-10-17",
+               "Statement": [ {
+                  "Effect": "Allow",
+                  "Principal": {
+                     "Service": [ "ec2.amazonaws.com" ]
+                  },
+                  "Action": [ "sts:AssumeRole" ]
+               } ]
+            },
+            "Path": "/",
+            "ManagedPolicyArns": ["arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"]
+            }
+      },
+      "AdJoinInstanceProfile": {
+         "Type": "AWS::IAM::InstanceProfile",
+         "Properties": {
+            "InstanceProfileName": "DomainJoinRole",
+            "Path": "/",
+            "Roles": [ {
+               "Ref": "AdJoinIAMRole"
+            } ]
+         }
+      },
+        "Consumer2VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "Consumer2VpcCidr"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Ref": "Consumer2Environment"
+                        }
+                    }
+                ]
+            }
+        },
+        "Consumer1VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "Consumer1VpcCidr"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Ref": "Consumer1Environment"
+                        }
+                    }
+                ]
+            }
+        },
+        "Consumer2InternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "ServiceConsumer2IGW"
+                    }
+                ]
+            }
+        },
+        "Consumer1InternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "ServiceConsumer1IGW"
+                    }
+                ]
+            }
+        },
+        "Consumer2InternetGatewayAttachment": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "Consumer2VPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "Consumer2InternetGateway"
+                }
+            }
+        },
+        "Consumer1InternetGatewayAttachment": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "Consumer1VPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "Consumer1InternetGateway"
+                }
+            }
+        },
+        "Consumer2PublicSubnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "Consumer2VPC"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Ref": "Consumer2PublicSubnet1Value"
+                },
+                "MapPublicIpOnLaunch": "True",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Consumer2 Public Subnet1"
+                    }
+                ]
+            }
+        },
+        "Consumer1PublicSubnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "Consumer1VPC"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Ref": "Consumer1PublicSubnet1Value"
+                },
+                "MapPublicIpOnLaunch": "True",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Consumer1 Public Subnet1"
+                    }
+                ]
+            }
+        },
+        "Consumer2VPCPublicRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "Consumer2VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Consumer2 Public RT"
+                    }
+                ]
+            }
+        },
+        "Consumer1VPCPublicRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "Consumer1VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Consumer1 Public RT"
+                    }
+                ]
+            }
+        },
+        "Consumer2VPCDefaultPublicRoute": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": "Consumer2InternetGatewayAttachment",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "Consumer2VPCPublicRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "Consumer2InternetGateway"
+                }
+            }
+        },
+        "Consumer1VPCDefaultPublicRoute": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": "Consumer1InternetGatewayAttachment",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "Consumer1VPCPublicRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "Consumer1InternetGateway"
+                }
+            }
+        },
+        "Consumer2PublicSubnetRouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "Consumer2VPCPublicRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "Consumer2PublicSubnet1"
+                }
+            }
+        },
+        "Consumer1PublicSubnetRouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "Consumer1VPCPublicRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "Consumer1PublicSubnet1"
+                }
+            }
+        },
+        "HostSGConsumer2VPC": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupName": "Test-SG-Consumer2",
+                "GroupDescription": "Accepts traffic on port 22 and 3389 from Internt",
+                "VpcId": {
+                    "Ref": "Consumer2VPC"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3389",
+                        "ToPort": "3389",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Test-SG-Consumer2VPC"
+                    }
+                ]
+            }
+        },
+        "DomainMemberSG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupName": "DomainMemberSG",
+                "GroupDescription": "Accepts traffic on incoming port 3218 from Provider VPCs- 10.20.0.0/16",
+                "VpcId": {
+                    "Ref": "Consumer1VPC"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": "10.0.0.0/16",
+                        "Description": "Accepts all traffic from shared services VPC, this is more open than it should be for testing purposes only"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3389",
+                        "ToPort": "3389",
+                        "CidrIp": "0.0.0.0/0",
+                        "Description": "Accepts only RDP traffic from any host."
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "DomainMemberSG1"
+                    }
+                ]
+            }
+        },
+        "ProxyTrafficSG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupName": "ProxyTrafficSG",
+                "GroupDescription": "Accepts traffic on incoming port 3218 from Provider VPCs- 10.20.0.0/16",
+                "VpcId": {
+                    "Ref": "Consumer2VPC"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3128",
+                        "ToPort": "3128",
+                        "CidrIp": "10.20.0.0/16",
+                        "Description": "Accepts all traffic from shared services VPC, this is more open than it should be for testing purposes only"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "ProxyTrafficSG1"
+                    }
+                ]
+            }
+        },
+        "SquidInstance": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "Linux"
+                    ]
+                },
+                "IamInstanceProfile": {"Ref":"AdJoinInstanceProfile"},
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SubnetId": {
+                    "Ref" : "ProviderPublicSubnet1"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Ref": "SquidProxySG"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Squid Proxy Instance"
+                    }
+                ],
+                "InstanceType": "t2.micro"
+            }
+        },
+        "Ec2ServiceConsumer2Host": {
+            "Type": "AWS::EC2::Instance",
+            "Condition": "LinuxTestInstance",
+            "Properties": {
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "Linux"
+                    ]
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SubnetId": {
+                    "Ref" : "Consumer2PublicSubnet1"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Ref": "HostSGConsumer2VPC"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Test Instance"
+                    }
+                ],
+                "InstanceType": "t2.micro"
+            }
+        },
+        "Ec2ServiceConsumer2WinHost": {
+            "Type": "AWS::EC2::Instance",
+            "Condition": "WindowsTestInstance",
+            "Properties": {
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "Windows"
+                    ]
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SubnetId": {
+                    "Ref" : "Consumer2PublicSubnet1"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Ref": "HostSGConsumer2VPC"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Test Instance"
+                    }
+                ],
+                "InstanceType": "t2.large"
+            }
+        },
+        "VPCPeeringConnection1": {
+            "Type": "AWS::EC2::VPCPeeringConnection",
+            "Properties": {
+                "VpcId": {"Ref": "Consumer1VPC"},
+                "PeerVpcId": {"Ref": "ProviderVPC"}
+            }
+        },
+        "VPCPeeringConnection2": {
+            "Type": "AWS::EC2::VPCPeeringConnection",
+            "Properties": {
+                "VpcId": {"Ref": "Consumer2VPC"},
+                "PeerVpcId": {"Ref": "ProviderVPC"}
+            }
+        },
+        "PeeringRouteConsumer1ToProvider" : {
+            "Type" : "AWS::EC2::Route",
+            "Properties" : {
+                "DestinationCidrBlock": {"Fn::GetAtt" : ["ProviderVPC","CidrBlock"]},
+                "RouteTableId" : { "Ref" : "Consumer1VPCPublicRouteTable" },
+                "VpcPeeringConnectionId" : { "Ref" : "VPCPeeringConnection1" }
+            }
+        },            
+        "PeeringRouteConsumer2ToProvider" : {
+            "Type" : "AWS::EC2::Route",
+            "Properties" : {
+                "DestinationCidrBlock": {"Fn::GetAtt" : ["ProviderVPC","CidrBlock"]},
+                "RouteTableId" : { "Ref" : "Consumer2VPCPublicRouteTable" },
+                "VpcPeeringConnectionId" : { "Ref" : "VPCPeeringConnection2" }
+            }
+        }
+    },
+    "Outputs": {
+        "SquidProxyInstancePublicIP": {
+            "Description": "SquidProxy Instance Public IP",
+            "Value": { "Fn::GetAtt": [ "SquidInstance", "PublicIp" ] }
+        },
+        "TestInstancePublicIP": {
+            "Description": " Consumer2 Public IP:",
+            "Value": { 
+                "Fn::If" : [ "LinuxTestInstance", 
+                    {
+                        "Fn::GetAtt": [
+                        "Ec2ServiceConsumer2Host",
+                        "PublicIp"
+                        ]
+                    }, 
+                    {
+                        "Fn::GetAtt": [
+                        "Ec2ServiceConsumer2WinHost",
+                        "PublicIp"
+                        ]
+                    }
+                    ]
+            }
+        },
+        "TestInstancePrivateIP": {
+            "Condition": "LinuxTestInstance",
+            "Description": "Test Instance Private IP:",
+            "Value": { 
+                "Fn::If" : [ "LinuxTestInstance", 
+                    {
+                        "Fn::GetAtt": [
+                        "Ec2ServiceConsumer2Host",
+                        "PrivateIp"
+                        ]
+                    }, 
+                    {
+                        "Fn::GetAtt": [
+                        "Ec2ServiceConsumer2WinHost",
+                        "PrivateIp"
+                        ]
+                    }
+                    ]
+            }
+        }
+    }
+}
