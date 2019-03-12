@@ -1,22 +1,38 @@
-site_name: AWS Directory Services Workshop
+site_name: AWS Services Workshop
+site_url: https://www.awssri.com/
+repo_url: https://github.com/srikanna/ds-workshop
+repo_name: GitHub
+use_directory_urls: false
 nav:
-  - Setting up the environment: module-1.md
-  - Establish Trust between Managed ADs: module-2.md
-  - Share domain between AWS accounts : module-3.md
-  - MFA: module-4.md
-  - AWS Console Access: module-5.md
-  - References: module-6.md
-  
+    - Home: index.md
+    - AWS Directory Services:
+        - Introduction: ds/intro.md   
+        - Setting up the environment: ds/module-1.md
+        - Establish Trust between Managed ADs: ds/module-2.md
+        - Share domain between AWS accounts : ds/module-3.md
+        - MFA: ds/module-4.md
+        - AWS Console Access: ds/module-5.md
+        - References: ds/module-6.md
+    - TransitGateway:
+        - Introduction: tgw/intro.md
+        - Architecture Patterns: tgw/archPatterns.md
+        - Setting up the base environment: tgw/baseEnv.md
+    - re:Invent-2018 NET315:
+        - Setup: net315/index.md
+
 theme:
   name: 'material'
+  logo: 'images/aws-logo.svg'
+  favicon: 'assets/images/favicon.ico'
   palette:
-    primary: 'indigo'
-    accent: 'indigo'
+    primary: Amber
+    accent: Black
   font:
      text: 'Roboto'
      code: 'Consolas'
   feature:
     tabs: true
+
 # Customizations
 markdown_extensions:
   - admonition
@@ -38,5 +54,6 @@ markdown_extensions:
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.tilde
+  - pyembed.markdown
   - toc:
       permalink: true

@@ -4,11 +4,11 @@
   "runtimeConfig": {
     "aws:domainJoin": {
       "properties": {
-        "directoryId": "d-98673209bb",
+        "directoryId": "d-1234567890",
         "directoryName": "example.com",
         "dnsIpAddresses": [
-          "172.31.20.129",
-          "172.31.43.211"
+          "Your-DS-IP1",
+          "Your-DS-IP2"
         ]
       }
     }

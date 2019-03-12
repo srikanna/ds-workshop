@@ -5,4 +5,4 @@ phases:
     commands:
       - pip3 install -r requirements.txt
       - mkdocs build
-      - aws s3 cp --recursive site/ s3://workshop.summit.awsdemo.me/
+      - aws s3 cp --recursive site/ s3://serverless-sites/

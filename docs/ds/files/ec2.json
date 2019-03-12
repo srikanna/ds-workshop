@@ -5,9 +5,9 @@
         "Enabled": true
     }, 
     "SecurityGroupIds": [
-        "sg-fb0d1099"
+        "sg-12345678"
     ],
-    "SubnetId": "subnet-oe3f2b6c", 
+    "SubnetId": "subnet-12345678", 
     "IamInstanceProfile": {
         "Name": "TestEC2Role"
     }, 

@@ -11,3 +11,4 @@ pymdown-extensions==6.0
 PyYAML==3.13
 six==1.11.0
 tornado==5.1.1
+pyembed-markdown==1.1.0

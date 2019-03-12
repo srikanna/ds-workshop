@@ -1,4 +1,5 @@
-# Objective is to a create AWS Managed Microsoft Active Directory, launch an EC2 Windows instance, join it to the managed AD domain and then install RSAT tools to manage users and groups in the Active Directory.
+# Objective 
+In this module we will create a AWS Managed Microsoft Active Directory, launch an EC2 Windows instance, join it to the managed AD domain and then install RSAT tools to manage users and groups in the Active Directory. This is desgined to work specifically in AWS GovCloud 
 
 ## Architecture
 
@@ -14,7 +15,7 @@
 
 ## Create AD using the AWS CLI
 
-1.  Download this [**file**](./createAd.json){:target="_blank"} or copy the contents below into a file and name it ``` createAd.json ```
+1.  Download this [**file**](./files/createAd.json){:target="_blank"} or copy the contents below into a file and name it ``` createAd.json ```
 
     !!! tip " **Note**: make sure you modify the parameters in the file below as needed "
 
@@ -22,12 +23,12 @@
                 {
                     "Name": "example.com", 
                     "ShortName": "example", 
-                    "Password": "Aws@dmin20171", 
+                    "Password": "StrongPassword", 
                     "Description": "Sandbox Directory", 
                     "VpcSettings": {
-                        "VpcId": "vpc-1b0d1e79", 
+                        "VpcId": "vpc-12345678", 
                         "SubnetIds": [
-                            "subnet-0e3f2b6c","subnet-d58cc693"
+                            "subnet-12345678","subnet-12345678"
                         ]
                     }, 
                     "Edition": "Standard"
@@ -40,7 +41,7 @@
     Sample Output
 
         {
-            "DirectoryId": "d-98673209bb"
+            "DirectoryId": "d-1234567890"
         }
 
 3.  Sign into the [AWS Management Console](https://console.amazonaws-us-gov.com/directoryservicev2/home?region=us-gov-west-1){:target="_blank"}.
@@ -49,7 +50,7 @@
 
 !!! tip "this role will be used by the EC2 instance providing ec2 access to use Systems manager. SSM Run command is used to domain join the EC2 instance"
 
-1. Download this [**file**](./assumeRole.json){:target="_blank"} or copy the contents below into a file and name it ``` assumeRole.json ```
+1. Download this [**file**](./files/assumeRole.json){:target="_blank"} or copy the contents below into a file and name it ``` assumeRole.json ```
 
         {
         "Version": "2012-10-17",
@@ -78,7 +79,7 @@
 
 1. Run the AWS CLI command below to launch EC2 Windows 2016 base instance ( set the subnet as desired)
 
-        aws ec2 run-instances --image-id ami-6bd2bd0a --count 1 --instance-type t2.large --subnet-id subnet-0e3f2b6c --security-group-ids sg-fb0d1099 --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=TestDomainMember}]' --region us-gov-west-1 --profile assumehaidergov
+        aws ec2 run-instances --image-id ami-6bd2bd0a --count 1 --instance-type t2.large --subnet-id subnet-0e3f2b6c --security-group-ids sg-fb0d1099 --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=TestDomainMember}]' --region us-gov-west-1
 
 ## Domain Join using Systems manager
 
@@ -90,11 +91,11 @@
         \"runtimeConfig\": {
             \"aws:domainJoin\": {
             \"properties\": {
-                \"directoryId\": \"d-986732a4e3\",
-                \"directoryName\": \"goveast.awssri.com\",
+                \"directoryId\": \"d-1234567890\",
+                \"directoryName\": \"example.com\",
                 \"dnsIpAddresses\": [
-                \"10.0.1.168\",
-                \"10.0.1.200\"
+                \"AWS-DS-DNS-IP1\",
+                \"AWS-DS-DNS-IP2\"
                 ]
             }
             }
@@ -103,11 +104,11 @@
 
 2. Use Run command to execute the above document.
 
-        aws ssm send-command --document-name "domainJoin" --instance-ids "i-07a3ff0f2bd7d01ca" --parameters '{}' --timeout-seconds 600 --region us-gov-west-1
+        aws ssm send-command --document-name "domainJoin" --instance-ids "instanceID" --parameters '{}' --timeout-seconds 600 --region us-gov-west-1
 
 ## Install RSAT tools
 
 1. Install RSAT tools to manage users and Groups
 
-        aws ssm send-command --document-name "AWS-RunPowerShellScript" --instance-ids "i-07a3ff0f2bd7d01ca" --parameters '{"commands":["Install-WindowsFeature -name RSAT-DNS-Server","Install-WindowsFeature -name RSAT-AD-Tools"],"executionTimeout":["3600"]}' --timeout-seconds 600 --region us-gov-west-1
+        aws ssm send-command --document-name "AWS-RunPowerShellScript" --instance-ids "insertInstanceID" --parameters '{"commands":["Install-WindowsFeature -name RSAT-DNS-Server","Install-WindowsFeature -name RSAT-AD-Tools"],"executionTimeout":["3600"]}' --timeout-seconds 600 --region us-gov-west-1
 
