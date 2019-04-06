@@ -1,0 +1,73 @@
+    {
+        "schemaVersion": "2.2",
+        "description": "Install and Configure StrongSwan/Quagga as CGW for AWS VPN",
+        "parameters": {
+            "action": {
+                "description": "The action to be taken.",
+                "type": "String",
+                "default": "configure",
+                "allowedValues": [
+                    "configure",
+                    "start",
+                    "status",
+                    "stop"
+                ]
+            },
+            "vpnId": {
+                "description": "Provide the VPN Connection id vpn-xxxdsfdadsdad",
+                "type": "String",
+                "default": "vpn-xxxxx"
+            },
+            "awsRegion": {
+                "description": "Region in which the above VPN connection created",
+                "type": "String",
+                "default": "us-east-1"
+            }
+        },
+        "mainSteps": [
+        {
+            "name": "InstallAndConfigureQuaggaForAWSVPN",
+            "action": "aws:runShellScript",
+            "precondition": {
+            "StringEquals": [
+                "platformType", "Linux"
+            ]
+            },
+            "inputs" : {
+            "runCommand": [
+                        " #!/bin/sh",
+                        " set -e",
+                        " set -u",
+                        " action=\"{{action}}\"",
+                        " vpnId=\"{{vpnId}}\"",
+                        " awsRegion=\"{{awsRegion}}\"",
+                        " if [ \"${action}\" = 'configure' ]; then",
+                        "     action='fetch-config'",
+                        " fi",
+                        " rm -rf *.sh",
+                        " wget https://workshop.awssri.com/tgw/files/install.sh -q -O /tmp/install.sh",
+                        " wget https://workshop.awssri.com/tgw/files/setparams.sh -q -O /tmp/setparams.sh",
+                        " wget https://workshop.awssri.com/tgw/files/configure.sh -q -O /tmp/configure.sh",
+                        " wget https://workshop.awssri.com/tgw/files/status.sh -q -O /tmp/status.sh", 
+                        " chmod +x /tmp/*.sh",
+                        " vpnregex=(^vpn-?.*[a-z,0-9])",
+                        " if [ \"${action}\" = 'fetch-config' ]; then",
+                        "   if [[ \"${vpnId}\" =~ $vpnregex ]]; then",
+                        "       cmd=\"aws ec2 describe-vpn-connections --vpn-connection-ids ${vpnId} --query VpnConnections[*].CustomerGatewayConfiguration[] --region ${awsRegion} --output text\"",
+                        "       ${cmd} >/tmp/vpn.xml",
+                        "   else",
+                        "       echo 'provide valid vpn connection id'",
+                        "   exit 1",
+                        "   fi",
+                        "   (exec \"/tmp/install.sh\")",
+                        "   (exec \"/tmp/setparams.sh\")",
+                        "   (exec \"/tmp/configure.sh\")",
+                        " elif [ \"${action}\" = 'status' ]; then",
+                        "   (exec \"/tmp/status.sh\")",
+                        " fi"
+                    ]
+            }
+        }
+
+        ]
+    }

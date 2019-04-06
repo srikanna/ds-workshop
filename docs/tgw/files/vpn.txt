@@ -1,0 +1,130 @@
+TODO
+
+
+ipset create ipsecvpn hash:net
+ipset add ipsecvpn 10.10.0.0/16
+ipset add ipsecvpn 10.20.0.0/16
+iptables -t nat -A POSTROUTING -j MASQUERADE -m set ! --match-set ipsecvpn dst
+
+
+charon.con install routes???
+
+
+
+
+
+
+sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
+sudo systemctl enable amazon-ssm-agent
+sudo systemctl start amazon-ssm-agent
+
+
+
+DONE
+
+
+
+
+yum-config-manager --enable epel
+yum install -y strongswan quagga
+
+
+sysctl -w net.ipv4.ip_forward=1
+
+ 1. install tools
+ 2. configure IPSEC -- 
+    copy strongswan config from s3.
+    https://workshop.awssri.com/tgw/files/ipsec.conf
+    insert CGW private from VGW public ip from the parameters into the file. save it.
+    copy from ipsec-vti from s3
+    https://workshop.awssri.com/tgw/files/ipsec-vti.sh
+
+    replace cgw and vgw inside ip address. save it
+    create secrtes files in /etc/strongswan/ipsec.secrets.
+    restart strongswan
+ 3. Configure bgpd
+    copy from bgpd and zebra conf from s3.
+    replace ips in bgpd.conf
+
+
+
+yum install xml2 -y
+
+#download the vpnconfig
+
+aws ec2 describe-vpn-connections --vpn-connection-ids vpn-0997191e32c935830 --query VpnConnections[*].CustomerGatewayConfiguration[] --region us-east-1 --output text > /tmp/vpn.xml
+
+tunnel1Path="/tmp/tunnel1.txt"
+tunnel2Path="/tmp/tunnel2.txt"
+
+xml2 < vpn.xml >/tmp/vpn-parsed.txt
+sed '/^\/vpn_connection\/ipsec_tunnel$/q' /tmp/vpn-parsed.txt > $tunnel1Path
+sed -n '/^\/vpn_connection\/ipsec_tunnel$/,$ p' /tmp/vpn-parsed.txt > $tunnel2Path
+
+ipv4=$(/sbin/ip -o -4 addr list eth0 | awk '{print $4}' | cut -d/ -f1)
+
+vgw1=$(grep -e '^.*vpn_gateway/tunnel_outside_address/ip_address' $tunnel1Path | cut -f2- -d=)
+vgw2=$(grep -e '^.*vpn_gateway/tunnel_outside_address/ip_address' $tunnel2Path | cut -f2- -d=)
+
+vgw1psk=$(grep -e '^.*pre_shared_key' $tunnel1Path | cut -f2- -d=)
+vgw2psk=$(grep -e '^.*pre_shared_key' $tunnel2Path | cut -f2- -d=)
+
+vgw1ip=$(grep -e '^.*vpn_gateway/tunnel_inside_address/ip_address' $tunnel1Path | cut -f2- -d=)
+vgw2ip=$(grep -e '^.*vpn_gateway/tunnel_inside_address/ip_address' $tunnel2Path | cut -f2- -d=)
+
+cgw1ip=$(grep -e '^.*customer_gateway/tunnel_inside_address/ip_address' $tunnel1Path | cut -f2- -d=)
+cgw2ip=$(grep -e '^.*customer_gateway/tunnel_inside_address/ip_address' $tunnel2Path | cut -f2- -d=)
+
+
+cd /tmp/ && rm ipsec* -f && rm tunnel* -f && rm vpn* -f
+
+wget https://workshop.awssri.com/tgw/files/ipsec.conf -O /tmp/ipsec.conf
+sed -i "s/cgw-private-ip/$ipv4/g" "/tmp/ipsec.conf"
+sed -i "s/vgw1-outside-ip/$vgw1/g" "/tmp/ipsec.conf"
+sed -i "s/vgw2-outside-ip/$vgw2/g" "/tmp/ipsec.conf"
+
+/bin/cp /etc/strongswan/ipsec.conf /etc/strongswan/ipsec.conf.bkup
+/bin/cp -f /tmp/ipsec.conf /etc/strongswan/ipsec.conf
+
+wget https://workshop.awssri.com/tgw/files/ipsec-vti.sh -O /tmp/ipsec-vti.sh
+
+sed -i "s/cgw1-inside-ip/$cgw1ip/g" "/tmp/ipsec-vti.sh"
+sed -i "s/cgw2-inside-ip/$cgw2ip/g" "/tmp/ipsec-vti.sh"
+sed -i "s/vgw1-inside-ip/$vgw1-ip/g" "/tmp/ipsec-vti.sh"
+sed -i "s/vgw2-inside-ip/$vgw2-ip/g" "/tmp/ipsec-vti.sh"
+
+/bin/cp /etc/strongswan/ipsec.conf /etc/strongswan/ipsec-vti.sh.bkup
+/bin/cp -f /tmp/ipsec-vti.sh /etc/strongswan/ipsec-vti.sh
+chmod +x /etc/strongswan/ipsec-vti.sh
+
+wget https://workshop.awssri.com/tgw/files/ipsec.secrets -O /tmp/ipsec.secrets
+sed -i "s/cgw-private-ip/$ipv4/g" "/tmp/ipsec.secrets"
+sed -i "s/vgw1-outside-ip/$vgw1/g" "i/tmp/psec.secrets"
+sed -i "s/vgw2-outside-ip/$vgw2/g" "/tmp/ipsec.secrets"
+sed -i "s/vgw1-psk/$vgw1psk/g" "/tmp/ipsec.secrets"
+sed -i "s/vgw2-psk/$vgw2psk/g" "/tmp/ipsec.secrets"
+
+/bin/cp /etc/strongswan/ipsec.secrets /etc/strongswan/ipsec.secrets.bkup
+/bin/cp -f /tmp/ipsec.secrets /etc/strongswan/ipsec.secrets
+
+
+wget https://workshop.awssri.com/tgw/files/zebra.conf -O /tmp/zebra.conf
+/bin/cp -f /etc/quagga/zebra.conf /etc/quagga/zebra.conf.bkup
+/bin/cp -f /tmp/zebra.conf /etc/quagga/zebra.conf
+
+wget https://workshop.awssri.com/tgw/files/bgpd.conf -O /tmp/bgpd.conf
+
+sed -i "s/vgw1-inside-ip/$vgw1-ip/g" "/tmp/bgpd.conf"
+sed -i "s/vgw2-inside-ip/$vgw2-ip/g" "/tmp/bgpd.conf"
+
+/bin/cp -f /etc/quagga/bgpd.conf /etc/quagga/bgpd.conf.bkup
+/bin/cp -f /tmp/bgpd.conf /etc/quagga/bgpd.conf
+
+
+chown quagga.quagga /etc/quagga/*.conf
+chmod 640 /etc/quagga/*.conf
+
+
+yum install ipset
+
+

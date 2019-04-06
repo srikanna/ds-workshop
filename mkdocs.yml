@@ -16,7 +16,7 @@ nav:
     - TransitGateway:
         - Introduction: tgw/intro.md
         - Architecture Patterns: tgw/archPatterns.md
-        - Setting up the base environment: tgw/baseEnv.md
+        - Hands on Labs: tgw/labs.md
     - re:Invent-2018 NET315:
         - Setup: net315/index.md
 
