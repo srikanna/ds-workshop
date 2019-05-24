@@ -1,0 +1,8 @@
+{
+"downloadurl":"https://workshop.awssri.com/tgw/files/",
+"filename":["ipsec.conf","ipsec-vti.sh","ipsec.secrets","bgpd.conf","zebra.conf"],
+"params":["cgwprivateip","vgw1outsideip","vgw2outsideip",
+        "cgw1insideip","cgw2insideip","vgw1insideip",
+        "vgw2insideip","vgw1psk","vgw2psk","vgwas","cgwas"],
+"packages": ["xml2", "ipset"]
+}

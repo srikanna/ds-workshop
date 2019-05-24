@@ -11,25 +11,20 @@ fi
 tunnel1Path="/tmp/tunnel1.txt"
 tunnel2Path="/tmp/tunnel2.txt"
 
-cd /tmp/ && rm ipsec* tunnel* variables* zebra* bgpd* -f
+cd /tmp/ && rm variables* tunnel* vpn-* -f
 
-wget https://workshop.awssri.com/tgw/files/ipsec-vti.sh -O /tmp/ipsec-vti.sh
-wget https://workshop.awssri.com/tgw/files/ipsec.conf -O /tmp/ipsec.conf
-wget https://workshop.awssri.com/tgw/files/ipsec.secrets -O /tmp/ipsec.secrets
-wget https://workshop.awssri.com/tgw/files/zebra.conf -O /tmp/zebra.conf
-wget https://workshop.awssri.com/tgw/files/bgpd.conf -O /tmp/bgpd.conf
-
+# extra xml tags from the vpn config to a text file
 xml2 < /tmp/vpn.xml >/tmp/vpn-parsed.txt
 sed '/^\/vpn_connection\/ipsec_tunnel$/q' /tmp/vpn-parsed.txt > $tunnel1Path
 sed -n '/^\/vpn_connection\/ipsec_tunnel$/,$ p' /tmp/vpn-parsed.txt > $tunnel2Path
 
 ipv4=$(/sbin/ip -o -4 addr list eth0 | awk '{print $4}' | cut -d/ -f1)
-echo "ipv4=$ipv4" >>/tmp/variables.txt
+echo "cgwprivateip=$ipv4" >>/tmp/variables.txt
 
 vgw1=$(grep -e '^.*vpn_gateway/tunnel_outside_address/ip_address' $tunnel1Path | cut -f2- -d=)
 vgw2=$(grep -e '^.*vpn_gateway/tunnel_outside_address/ip_address' $tunnel2Path | cut -f2- -d=)
-echo "vgw1=$vgw1" >>/tmp/variables.txt
-echo "vgw2=$vgw2" >>/tmp/variables.txt
+echo "vgw1outsideip=$vgw1" >>/tmp/variables.txt
+echo "vgw2outsideip=$vgw2" >>/tmp/variables.txt
 
 vgw1psk=$(grep -e '^.*pre_shared_key' $tunnel1Path | cut -f2- -d=)
 vgw2psk=$(grep -e '^.*pre_shared_key' $tunnel2Path | cut -f2- -d=)
@@ -38,13 +33,13 @@ echo "vgw2psk=$vgw2psk" >>/tmp/variables.txt
 
 vgw1ip=$(grep -e '^.*vpn_gateway/tunnel_inside_address/ip_address' $tunnel1Path | cut -f2- -d=)
 vgw2ip=$(grep -e '^.*vpn_gateway/tunnel_inside_address/ip_address' $tunnel2Path | cut -f2- -d=)
-echo "vgw1ip=$vgw1ip" >>/tmp/variables.txt
-echo "vgw2ip=$vgw2ip" >>/tmp/variables.txt
+echo "vgw1insideip=$vgw1ip" >>/tmp/variables.txt
+echo "vgw2insideip=$vgw2ip" >>/tmp/variables.txt
 
 cgw1ip=$(grep -e '^.*customer_gateway/tunnel_inside_address/ip_address' $tunnel1Path | cut -f2- -d=)
 cgw2ip=$(grep -e '^.*customer_gateway/tunnel_inside_address/ip_address' $tunnel2Path | cut -f2- -d=)
-echo "cgw1ip=$cgw1ip" >>/tmp/variables.txt
-echo "cgw2ip=$cgw2ip" >>/tmp/variables.txt
+echo "cgw1insideip=$cgw1ip" >>/tmp/variables.txt
+echo "cgw2insideip=$cgw2ip" >>/tmp/variables.txt
 
 cgwas=$(grep -e '^.*customer_gateway/bgp/asn' $tunnel1Path | cut -f2- -d=)
 vgwas=$(grep -e '^.*vpn_gateway/bgp/asn' $tunnel2Path | cut -f2- -d=)

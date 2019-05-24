@@ -8,65 +8,60 @@ service strongswan stop
 service bgpd stop
 service zebra stop
 
-sed -i "s/cgw-private-ip/$ipv4/g" "/tmp/ipsec.conf"
-sed -i "s/vgw1-outside-ip/$vgw1/g" "/tmp/ipsec.conf"
-sed -i "s/vgw2-outside-ip/$vgw2/g" "/tmp/ipsec.conf"
+# these variable names has to match what was used in setparams.sh file.
+# essential matching the key names from /tmp/variables.txt
+declare -a params=("cgwprivateip" "vgw1outsideip" "vgw2outsideip" "cgw1insideip" 
+                    "cgw2insideip" "vgw1insideip" "vgw2insideip" "vgw1psk" "vgw2psk"
+                    "vgwas" "cgwas")
 
-echo 'copying ipsec configuration'
-/bin/cp /etc/strongswan/ipsec.conf /etc/strongswan/ipsec.conf.bkup 2>/dev/null || :
-/bin/cp -f /tmp/ipsec.conf /etc/strongswan/ipsec.conf
+declare -a filename=("ipsec.conf" "ipsec-vti.sh" "ipsec.secrets" "bgpd.conf" "zebra.conf") 
 
+cd /tmp/ && rm ipsec* zebra* bgpd* -f
 
-sed -i "s/cgw1-inside-ip/$cgw1ip/g" "/tmp/ipsec-vti.sh"
-sed -i "s/cgw2-inside-ip/$cgw2ip/g" "/tmp/ipsec-vti.sh"
-sed -i "s/vgw1-inside-ip/$vgw1ip/g" "/tmp/ipsec-vti.sh"
-sed -i "s/vgw2-inside-ip/$vgw2ip/g" "/tmp/ipsec-vti.sh"
+for file in "${filename[@]}"
+do
+    
+    wget https://workshop.awssri.com/tgw/files/$file -q -O /tmp/$file
+    echo "downloaded $file from s3..."
+    for i in "${params[@]}"
+    do
+        sed -i "s/$i/${!i}/g" "/tmp/$file"
+    done
+    
+    if [[ $file =~ ^bgpd ]] || [[ $file =~ ^zebra ]]; then 
 
-echo 'copying ipsec up/down script'
-/bin/cp /etc/strongswan/ipsec.conf /etc/strongswan/ipsec-vti.sh.bkup 2>/dev/null || :
-/bin/cp -f /tmp/ipsec-vti.sh /etc/strongswan/ipsec-vti.sh
+        echo "copying ${file} configuration"
+        /bin/cp /etc/quagga/$file /etc/quagga/$file.bkup 2>/dev/null || :
+        /bin/cp -f /tmp/$file /etc/quagga/$file
+        
+        chown quagga.quagga /etc/quagga/*.conf
+        chmod 640 /etc/quagga/*.conf
+
+    else
+        
+        echo "copying ${file} configuration"
+        /bin/cp /etc/strongswan/$file /etc/strongswan/$file.bkup 2>/dev/null || :
+        /bin/cp -f /tmp/$file /etc/strongswan/$file
+
+    fi
+done
 chmod +x /etc/strongswan/ipsec-vti.sh
-
-
-sed -i "s/cgw-private-ip/$ipv4/g" "/tmp/ipsec.secrets"
-sed -i "s/vgw1-outside-ip/$vgw1/g" "/tmp/ipsec.secrets"
-sed -i "s/vgw2-outside-ip/$vgw2/g" "/tmp/ipsec.secrets"
-sed -i "s/vgw1-psk/$vgw1psk/g" "/tmp/ipsec.secrets"
-sed -i "s/vgw2-psk/$vgw2psk/g" "/tmp/ipsec.secrets"
-
-echo 'copying ipsec.secretes configuration'
-/bin/cp /etc/strongswan/ipsec.secrets /etc/strongswan/ipsec.secrets.bkup 2>/dev/null || :
-/bin/cp -f /tmp/ipsec.secrets /etc/strongswan/ipsec.secrets
-
-echo 'copying zebra configuration'
-/bin/cp /etc/quagga/zebra.conf /etc/quagga/zebra.conf.bkup 2>/dev/null || :
-/bin/cp -f /tmp/zebra.conf /etc/quagga/zebra.conf
-
-
-sed -i "s/vgw1-inside-ip/$vgw1ip/g" "/tmp/bgpd.conf"
-sed -i "s/vgw2-inside-ip/$vgw2ip/g" "/tmp/bgpd.conf"
-
-sed -i "s/vgw-as/$vgwas/g" "/tmp/bgpd.conf"
-sed -i "s/cgw-as/$cgwas/g" "/tmp/bgpd.conf"
-sed -i "s/cgw-private-ip/$ipv4/g" "/tmp/bgpd.conf"
-
-echo 'copying bgp configuration'
-/bin/cp /etc/quagga/bgpd.conf /etc/quagga/bgpd.conf.bkup 2>/dev/null || :
-/bin/cp -f /tmp/bgpd.conf /etc/quagga/bgpd.conf
-
-chown quagga.quagga /etc/quagga/*.conf
-chmod 640 /etc/quagga/*.conf
 
 # start services
 
 service strongswan restart
-service bgpd restart
 service zebra restart
+service bgpd restart
 
 # set ip tables
 
-ipset create ipsecvpn hash:net
 # TODO parameterize the VPC CIDRS for spokes below and loop for as many spokes.
-ipset add ipsecvpn 10.10.0.0/16
-ipset add ipsecvpn 10.20.0.0/16
-iptables -t nat -A POSTROUTING -j MASQUERADE -m set ! --match-set ipsecvpn dst
+
+# ipset create ipsecvpn hash:net
+# ipset add ipsecvpn 10.10.0.0/16
+# ipset add ipsecvpn 10.20.0.0/16
+# ipset save > /etc/ipset.conf
+# iptables -t nat -A POSTROUTING -j MASQUERADE -m set ! --match-set ipsecvpn dst
+# iptables-save > /etc/sysconfig/iptables
+
+

@@ -12,6 +12,7 @@
 
 # Adjust the below according to the Generic Gateway Configuration file provided to you by AWS.
 # Sample: http://docs.aws.amazon.com/AmazonVPC/latest/NetworkAdminGuide/GenericConfig.html
+# tested on Amazon linux Q2 2019.
 
 IP=$(which ip)
 IPTABLES=$(which iptables)
@@ -21,13 +22,13 @@ PLUTO_MARK_IN_ARR=(${PLUTO_MARK_IN//// })
 case "$PLUTO_CONNECTION" in
   AWS-VPC-GW1)
     VTI_INTERFACE=vti1
-    VTI_LOCALADDR=cgw1-inside-ip/30
-    VTI_REMOTEADDR=vgw1-inside-ip/30
+    VTI_LOCALADDR=cgw1insideip/30
+    VTI_REMOTEADDR=vgw1insideip/30
     ;;
   AWS-VPC-GW2)
     VTI_INTERFACE=vti2
-    VTI_LOCALADDR=cgw2-inside-ip/30
-    VTI_REMOTEADDR=vgw2-inside-ip/30
+    VTI_LOCALADDR=cgw2insideip/30
+    VTI_REMOTEADDR=vgw2insideip/30
     ;;
 esac
 
@@ -53,6 +54,7 @@ case "${PLUTO_VERB}" in
 esac
 
 # Enable IPv4 forwarding
+# refer 4
 sysctl -w net.ipv4.ip_forward=1
 sysctl -w net.ipv4.conf.eth0.disable_xfrm=1
 sysctl -w net.ipv4.conf.eth0.disable_policy=1
@@ -60,14 +62,23 @@ sysctl -w net.ipv4.conf.vti1.rp_filter=2
 sysctl -w net.ipv4.conf.vti2.rp_filter=2
 sysctl -w net.ipv4.conf.vti1.disable_policy=1
 sysctl -w net.ipv4.conf.vti2.disable_policy=1
-# refer 1
+# refer 4 and 5
 sysctl -w net.ipv4.fib_multipath_hash_policy=1
 sysctl -w net.ipv4.fib_multipath_use_neigh=1
 
+ipset create ipsecvpn hash:net
+ipset add ipsecvpn 10.10.0.0/16
+ipset add ipsecvpn 10.20.0.0/16
+ipset save > /etc/ipset.conf
+iptables -t nat -A POSTROUTING -j MASQUERADE -m set ! --match-set ipsecvpn dst
+
+iptables-save > /etc/sysconfig/iptables
+
+
 
 # References:
-# refer 1: https://codecave.cc/multipath-routing-in-linux-part-2.html
 # http://docs.aws.amazon.com/AmazonVPC/latest/NetworkAdminGuide/Introduction.html
 # http://end.re/2015-01-06_vti-tunnel-interface-with-strongswan.html
 # https://www-01.ibm.com/support/knowledgecenter/#!/SST55W_4.3.0/liaca/liaca_cfg_ipsec_vti.html
-# https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt
+# refer 4: https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt
+# refer 5: https://codecave.cc/multipath-routing-in-linux-part-2.html

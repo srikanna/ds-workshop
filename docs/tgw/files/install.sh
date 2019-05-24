@@ -7,9 +7,6 @@ bgpd='/usr/sbin/bgpd'
 zebra='/usr/sbin/zebra'
 echo 'configuring epel'
 yum-config-manager --enable epel
-# yum -y groupinstall "Development Tools"
-# yum -y install readline*
-# yum -y install c-ares*
 
 if [ ! -x ${ipsec} ]; then
     echo 'Strongswan is not installed. Installing..'
@@ -21,11 +18,12 @@ if [ ! -x ${bgpd} ]; then
     yum install -y  quagga
 fi
 
-echo 'installig xml2'
+#echo "installing $package"
 yum install -y xml2
 echo 'installig ipset'
 yum install -y ipset
 echo 'install script finished'
+yum install -y jq
 
 # set to start at boot
 chkconfig strongswan on

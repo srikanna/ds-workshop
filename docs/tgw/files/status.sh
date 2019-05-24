@@ -11,9 +11,10 @@ if [ ! -x ${ipsec} ]; then
 exit 1
 fi
 
+echo -e '\n ****** IPSEC STATUS ******'
 strongswan status
-echo '****** bgp summary ******'
+echo -e '\n ****** bgp summary ******'
 vtysh -c "sh ip bgp"
-echo '****** Linux Routing table *******'
+echo -e '\n ****** Linux Routing table *******'
 ip route
 
